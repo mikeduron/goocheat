@@ -102,7 +102,9 @@ public class GooCheat {
 		if (!dictionary.hasPrefix(out.toString())) {
 			return;
 		}
-		addWord(out.toString());
+		if (dictionary.exists(out.toString())) {
+			addWord(out.toString());
+		}
 		
 		if (depth == in.length()) {
 			return;

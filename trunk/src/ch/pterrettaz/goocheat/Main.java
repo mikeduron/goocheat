@@ -9,6 +9,8 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
 import java.util.LinkedList;
 import java.util.List;
 
@@ -28,7 +30,13 @@ public class Main extends JFrame{
 	
 	public Main(final GooCheat gooCheat) {
 		this.gooCheat = gooCheat;
-		setTitle("Goo Cheat");
+		String version = "";
+		try {
+			BufferedReader in = new BufferedReader(new InputStreamReader(getClass().getResourceAsStream("version.txt")));
+			version = in.readLine();
+			in.close();
+		} catch (Exception e1) { }
+		setTitle("Goo Cheat - " + version);
 		setSize(300, 200);
 		Dimension windowDim = Toolkit.getDefaultToolkit().getScreenSize();
 		setLocation(windowDim.width/2 - getWidth()/2, windowDim.height/2 - getHeight()/2);
@@ -54,8 +62,12 @@ public class Main extends JFrame{
 			}
 			public void keyPressed(KeyEvent e) {
 				JTextField source = (JTextField) e.getSource();
-				if (source.getText().length() < 15)
+				if (source.getText().length() < 15) {
+					button.setEnabled(false);
 					performSearch();
+				} else {
+					button.setEnabled(true);
+				}
 			}
 		});
 		
@@ -65,6 +77,7 @@ public class Main extends JFrame{
 		c.gridx = 1;
 		c.fill = GridBagConstraints.NONE;
 		button = new JButton("generate");
+		button.setEnabled(false);
 		panel.add(button, c);
 		
 		c.gridx = 0;
@@ -81,7 +94,9 @@ public class Main extends JFrame{
 		
 		button.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent e) {
+				button.setEnabled(false);
 				performSearch();
+				button.setEnabled(true);
 			}
 		});
 	}
@@ -91,7 +106,7 @@ public class Main extends JFrame{
 			result.setText("");
 			if (text.getText().equals(""))
 				return;
-			button.setEnabled(false);
+			
 			final List<String> ret = new LinkedList<String>();
 			SwingUtilities.invokeLater(new Runnable() {
 				public void run() {
@@ -99,7 +114,6 @@ public class Main extends JFrame{
 					for (String word: ret) {
 						result.append(word + '\n');
 					}
-					button.setEnabled(true);
 				}
 			});
 		} catch (Exception ex) { }
