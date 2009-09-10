@@ -17,10 +17,10 @@ public class GooCheat {
     private Map<String, String> accentsTable = new HashMap<String, String>();
     private Node dictionary = new Node();
     private Set<String> words;
-    private final int maxWords;
+    private int maxWords = 5;
+    private boolean searchStarted = false;
 
-    public GooCheat(int maxWords) throws Exception {
-        this.maxWords = maxWords;
+    public GooCheat() throws Exception {
         BufferedReader in = new BufferedReader(new InputStreamReader(getClass().getResourceAsStream("accents.txt")));
         String word = null;
         while ((word = in.readLine()) != null) {
@@ -79,7 +79,9 @@ public class GooCheat {
         }
     }
 
-    public List<String> getValidWordsPermutation(String in) {
+    public synchronized List<String> getValidWordsPermutation(String in, int maxWord) {
+        searchStarted = true;
+        this.maxWords = maxWord;
         in = stripAccents(in);
         words = new HashSet<String>();
         StringBuilder out = new StringBuilder();
