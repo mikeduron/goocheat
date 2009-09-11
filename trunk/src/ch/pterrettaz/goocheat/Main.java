@@ -9,8 +9,6 @@ import java.awt.Insets;
 import java.awt.KeyEventDispatcher;
 import java.awt.KeyboardFocusManager;
 import java.awt.Toolkit;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
 import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
 import java.awt.event.WindowEvent;
@@ -19,10 +17,10 @@ import java.io.InputStreamReader;
 import java.util.LinkedList;
 import java.util.List;
 
-import javax.swing.JButton;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
+import javax.swing.JProgressBar;
 import javax.swing.JScrollPane;
 import javax.swing.JSlider;
 import javax.swing.JTextArea;
@@ -34,14 +32,13 @@ import javax.swing.event.ChangeListener;
 public class Main extends JFrame {
 
     private static final long serialVersionUID = 1L;
-    private static final int MAX_AUTO_SEARCH_LENGTH = 16;
     private static final int MAX_LENGTH = 18;
     private static final int MIN_SEARCH_RESULT = 1;
     private static final int MAX_SEARCH_RESULT = 15;
     private final int TAB_SPACE;
     protected final GooCheat gooCheat;
     private final JTextField text;
-    private final JButton button;
+    private final JProgressBar bar;
     private final JTextArea result;
     private final JSlider slider;
     private final JLabel sliderLabel;
@@ -79,13 +76,7 @@ public class Main extends JFrame {
             }
 
             public void keyReleased(KeyEvent e) {
-                JTextField source = (JTextField) e.getSource();
-                if (source.getText().length() <= MAX_AUTO_SEARCH_LENGTH) {
-                    button.setEnabled(false);
-                    performSearch();
-                } else {
-                    button.setEnabled(true);
-                }
+                performSearch();
             }
 
             public void keyPressed(KeyEvent e) {
@@ -96,9 +87,12 @@ public class Main extends JFrame {
         c.weightx = 0;
         c.gridx = 1;
         c.fill = GridBagConstraints.NONE;
-        button = new JButton("generate");
-        button.setEnabled(false);
-        panel.add(button, c);
+        bar = new JProgressBar();
+        Dimension minSize = bar.getMinimumSize();
+        minSize.width = 50;
+        bar.setMinimumSize(minSize);
+        bar.setMaximumSize(minSize);
+        panel.add(bar, c);
         
         c.gridx = 0;
         c.gridy = 2;
@@ -141,14 +135,6 @@ public class Main extends JFrame {
         
         setContentPane(panel);
         setVisible(true);
-        getRootPane().setDefaultButton(button);
-        button.addActionListener(new ActionListener() {
-            public void actionPerformed(ActionEvent e) {
-                button.setEnabled(false);
-                performSearch();
-                button.setEnabled(true);
-            }
-        });
         
         KeyboardFocusManager.getCurrentKeyboardFocusManager().addKeyEventDispatcher(new KeyEventDispatcher() {
             public boolean dispatchKeyEvent(KeyEvent e) {
@@ -161,36 +147,56 @@ public class Main extends JFrame {
         });
     }
     
+    private int numberCurrentSearch = 0;
+    private synchronized void fireSearchStart() {
+        if (++numberCurrentSearch != 0)
+            SwingUtilities.invokeLater(new Runnable() {
+                public void run() {
+                    bar.setIndeterminate(true);
+                }
+            });
+    }
+    
+    private synchronized void fireSearchEnd() {
+        numberCurrentSearch--;
+        if (numberCurrentSearch == 0)
+            SwingUtilities.invokeLater(new Runnable() {
+                public void run() {
+                    bar.setIndeterminate(false);
+                }
+            });
+    }
+    
     private void performSearch() {
         new Thread(){
-
             @Override
             public void run() {
 
                 try {
                     final String search = text.getText().trim();
-                    if (search.equals(""))
+                    if (search.equals("")) {
+                        text.setText("");
                         return;
+                    }
 
                     final List<String> ret = new LinkedList<String>();
-                    SwingUtilities.invokeLater(new Runnable() {
-                        public void run() {
-                            button.setEnabled(false);
-                        }
-                    });
+                    fireSearchStart();
                     ret.addAll(gooCheat.getValidWordsPermutation(search, slider.getValue()));
-                    SwingUtilities.invokeLater(new Runnable() {
+                    SwingUtilities.invokeAndWait(new Runnable() {
                         public void run() {
-                            StringBuilder builder = new StringBuilder();
-                            int count = 1;
-                            for (String word : ret) {
-                                insertNumerotation(builder, count++);
-                                builder.append(word);
-                                builder.append('\n');
+                            try {
+                                StringBuilder builder = new StringBuilder();
+                                int count = 1;
+                                for (String word : ret) {
+                                    insertNumerotation(builder, count++);
+                                    builder.append(word);
+                                    builder.append('\n');
+                                }
+                                result.setText(builder.toString());
+                                result.setCaretPosition(0);
+                            } finally {
+                                fireSearchEnd();
                             }
-                            result.setText(builder.toString());
-                            result.setCaretPosition(0);
-                            button.setEnabled(true);
                         }
 
                         private void insertNumerotation(StringBuilder builder, int it) {
@@ -202,14 +208,11 @@ public class Main extends JFrame {
                         }
                     });
                 } catch (Exception ex) {
-                    ex.printStackTrace();
                 }
             }
         }.start();
     }
     
-    
-
     public static void main(String[] args) throws Exception {
         new Main(new GooCheat());
     }
